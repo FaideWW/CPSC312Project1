@@ -1,6 +1,6 @@
 -- CPSC 312 Project 1
 -- Michael Ko (31477102)
--- Saewon Kye ()
+-- Saewon Kye (14680110)
 -- Oct 29, 2013
 import Data.List
 
