@@ -91,8 +91,8 @@ e3s7_isValidMove board piece = not (stackedPieces (e3s7_findPieces board) || out
                 | snd (head pieces) == snd piece = True
                 | otherwise                      = stackedPieces (tail pieces);
               outOfBounds 
-                | fst (snd piece) < 0 || fst (snd piece) > length board                      = True
-                | snd (snd piece) < 0 || snd (snd piece) > length (board !! fst (snd piece)) = True
+                | fst (snd piece) < 0 || fst (snd piece) >= length board                      = True
+                | snd (snd piece) < 0 || snd (snd piece) >= length (board !! fst (snd piece)) = True
                 | otherwise                                                                  = False
 
 e3s7_generateForwardMoves :: [String] -> Player -> [Piece] -> [[String]]
@@ -103,10 +103,10 @@ e3s7_generateForwardMoves board player pieces
 e3s7_forwardMovesForPiece :: [String] -> [Piece] -> [[String]]
 e3s7_forwardMovesForPiece board pieces = trimEmptyLists (getLeftMoves:[getRightMoves])
                                     where getLeftMoves 
-                                            | e3s7_isValidMove board leftForward  = e3s7_drawBoard board (leftForward:tail pieces)
+                                            | e3s7_isValidMove board leftForward  = e3s7_drawBoard board (leftForward:rest_pieces)
                                             | otherwise                           = [];
                                           getRightMoves
-                                            | e3s7_isValidMove board rightForward = e3s7_drawBoard board (rightForward:tail pieces)
+                                            | e3s7_isValidMove board rightForward = e3s7_drawBoard board (rightForward:rest_pieces)
                                             | otherwise                           = [];
                                           leftForward 
                                             -- no need for `floor`: `div` truncates the decimal
@@ -116,6 +116,7 @@ e3s7_forwardMovesForPiece board pieces = trimEmptyLists (getLeftMoves:[getRightM
                                             | fst (snd piece) < (length board) `div` 2  = (fst piece, (fst (snd piece) + 1, snd (snd piece)))
                                             | fst (snd piece) >= (length board) `div` 2   = (fst piece, (fst (snd piece) + 1, snd (snd piece) + 1));
                                           piece = head pieces;
+                                          rest_pieces = tail pieces ++ e3s7_findPlayersPieces board (e3s7_otherPlayer (fst piece))
                                           trimEmptyLists lists 
                                             | null lists        = []
                                             | null (head lists) = trimEmptyLists (tail lists)
