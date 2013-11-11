@@ -73,10 +73,23 @@ e3s7_evaluateBoard :: [String] -> Int
          + (n - our closest distance to their side) 
          - (n - their closest distance to our side)
 
+   we treat 'W' as our player, because it simplifies the code.
+   in order to fetch the evaluation for 'B', just flip the sign
+   this works because the scores are symmetrical
+
    any heuristics we write will be placed here as well
 -} 
-e3s7_evaluateBoard board = undefined
-
+e3s7_evaluateBoard board 
+  | distanceToEdge board W == 0 || null bs           = length board
+  | distanceToEdge (reverse board) B == 0 || null ws = length board
+  | otherwise                                        = (length ws) 
+                                                     - (length bs)
+                                                     + (length board - distanceToEdge board W)
+                                                     - (length board - distanceToEdge (reverse board) B)
+  where ws = e3s7_findPlayersPieces board W;
+        bs = e3s7_findPlayersPieces board B;
+        distanceToEdge board player = (length board - 1) - fst (snd (maximumBy (distanceTo) (e3s7_findPlayersPieces board player)));
+        distanceTo p1 p2 = compare (fst (snd p1)) (fst (snd p2))
 
 e3s7_generateNewMoves :: [String] -> Player -> [[String]]
 {-
