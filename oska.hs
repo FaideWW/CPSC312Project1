@@ -33,7 +33,8 @@ e3s7_playerToChar p
 e3s7_otherPlayer :: Player -> Player
 e3s7_otherPlayer p
     | p == W    = B
-    | otherwise = W
+    | p == B    = W
+    | otherwise = E
 
 e3s7_getBestNextMove :: [String] -> Player -> Int -> [String]
 {-
@@ -81,49 +82,103 @@ e3s7_generateNewMoves :: [String] -> Player -> [[String]]
 {-
    given a board, generate all possible valid next moves for a player
 -}
-e3s7_generateNewMoves board player = e3s7_generateForwardMoves board player pieces ++ e3s7_generateJumpMoves board player pieces
+e3s7_generateNewMoves board player = e3s7_generateForwardMoves board player pieces [] ++ e3s7_generateJumpMoves board player pieces []
                                 where pieces = e3s7_findPlayersPieces board player
 
+e3s7_moveLeftForward :: [String] -> (Int, Int) -> (Int, Int)
+e3s7_moveLeftForward board pos
+  -- no need for `floor`, `div` truncates the decimal
+  | fst pos < (length board) `div` 2  = (fst pos + 1, snd pos - 1)
+  | fst pos >= (length board) `div` 2 = (fst pos + 1, snd pos)
+
+e3s7_moveRightForward :: [String] -> (Int, Int) -> (Int, Int)
+e3s7_moveRightForward board pos
+  | fst pos < (length board) `div` 2 = (fst pos + 1, snd pos)
+  | fst pos >= (length board) `div` 2 = (fst pos + 1, snd pos + 1)
+
+e3s7_isValidPosition :: [String] -> (Int, Int) -> Bool
+e3s7_isValidPosition board pos
+  | fst pos < 0 || fst pos >= length board              = False
+  | snd pos < 0 || snd pos >= length (board !! fst pos) = False
+  | otherwise                                           = True
+
+e3s7_getPieceAheadLeft :: [String] -> Piece -> Piece
+e3s7_getPieceAheadLeft board p 
+  | e3s7_isValidPosition board forwardLeft = (e3s7_charToPlayer (board !! (fst forwardLeft) !! (snd forwardLeft)), forwardLeft)
+  | otherwise                              = (E, forwardLeft)
+  where forwardLeft = (e3s7_moveLeftForward board (snd p))
+
+e3s7_getPieceAheadRight :: [String] -> Piece -> Piece
+e3s7_getPieceAheadRight board p
+  | e3s7_isValidPosition board forwardRight = (e3s7_charToPlayer (board !! (fst forwardRight) !! (snd forwardRight)), forwardRight)
+  | otherwise                               = (E, forwardRight)
+  where forwardRight = (e3s7_moveRightForward board (snd p))
+
 e3s7_isValidMove :: [String] -> Piece -> Bool
-e3s7_isValidMove board piece = not (stackedPieces (e3s7_findPieces board) || outOfBounds)
+e3s7_isValidMove board piece = not (stackedPieces (e3s7_findPieces board)) && e3s7_isValidPosition board (snd piece)
         where stackedPieces pieces 
                 | null pieces                    = False
                 | snd (head pieces) == snd piece = True
                 | otherwise                      = stackedPieces (tail pieces);
-              outOfBounds 
-                | fst (snd piece) < 0 || fst (snd piece) >= length board                      = True
-                | snd (snd piece) < 0 || snd (snd piece) >= length (board !! fst (snd piece)) = True
-                | otherwise                                                                  = False
 
-e3s7_generateForwardMoves :: [String] -> Player -> [Piece] -> [[String]]
-e3s7_generateForwardMoves board player pieces 
+e3s7_isValidJump :: [String] -> Piece -> Piece -> Bool
+e3s7_isValidJump board jumper jumpee
+  | e3s7_getPieceAheadLeft board jumper == jumpee 
+    && fst jumper == e3s7_otherPlayer (fst jumpee)
+    && e3s7_isValidMove board (fst jumper, e3s7_moveLeftForward board (snd jumpee))  = True
+  | e3s7_getPieceAheadRight board jumper == jumpee 
+    && fst jumper == e3s7_otherPlayer (fst jumpee)
+    && e3s7_isValidMove board (fst jumper, e3s7_moveRightForward board (snd jumpee)) = True
+  | otherwise                                                                        = False
+
+e3s7_generateForwardMoves :: [String] -> Player -> [Piece] -> [Piece] -> [[String]]
+e3s7_generateForwardMoves board player pieces used_pieces
     | null pieces = []
-    | otherwise   = e3s7_forwardMovesForPiece board pieces ++ e3s7_generateForwardMoves board player (tail pieces)
+    | otherwise   = e3s7_forwardMovesForPiece board (pieces ++ used_pieces) ++ e3s7_generateForwardMoves board player (tail pieces) (head pieces:used_pieces)
+
+e3s7_trimEmptyLists :: [[a]] -> [[a]]
+e3s7_trimEmptyLists lists 
+  | null lists        = []
+  | null (head lists) = e3s7_trimEmptyLists (tail lists)
+  | otherwise         = head lists:e3s7_trimEmptyLists (tail lists)
 
 e3s7_forwardMovesForPiece :: [String] -> [Piece] -> [[String]]
-e3s7_forwardMovesForPiece board pieces = trimEmptyLists (getLeftMoves:[getRightMoves])
+e3s7_forwardMovesForPiece board pieces = e3s7_trimEmptyLists (getLeftMoves:[getRightMoves])
                                     where getLeftMoves 
                                             | e3s7_isValidMove board leftForward  = e3s7_drawBoard board (leftForward:rest_pieces)
                                             | otherwise                           = [];
                                           getRightMoves
                                             | e3s7_isValidMove board rightForward = e3s7_drawBoard board (rightForward:rest_pieces)
                                             | otherwise                           = [];
-                                          leftForward 
-                                            -- no need for `floor`: `div` truncates the decimal
-                                            | fst (snd piece) < (length board) `div` 2  = (fst piece, (fst (snd piece) + 1, snd (snd piece) - 1))
-                                            | fst (snd piece) >= (length board) `div` 2   = (fst piece, (fst (snd piece) + 1, snd (snd piece)));
-                                          rightForward
-                                            | fst (snd piece) < (length board) `div` 2  = (fst piece, (fst (snd piece) + 1, snd (snd piece)))
-                                            | fst (snd piece) >= (length board) `div` 2   = (fst piece, (fst (snd piece) + 1, snd (snd piece) + 1));
+                                          leftForward = (fst piece, e3s7_moveLeftForward board (snd piece));
+                                          rightForward = (fst piece, e3s7_moveRightForward board (snd piece));
                                           piece = head pieces;
                                           rest_pieces = tail pieces ++ e3s7_findPlayersPieces board (e3s7_otherPlayer (fst piece))
-                                          trimEmptyLists lists 
-                                            | null lists        = []
-                                            | null (head lists) = trimEmptyLists (tail lists)
-                                            | otherwise         = head lists:trimEmptyLists (tail lists)
 
-e3s7_generateJumpMoves :: [String] -> Player -> [Piece] -> [[String]]
-e3s7_generateJumpMoves board player pieces = undefined
+e3s7_generateJumpMoves :: [String] -> Player -> [Piece] -> [Piece] -> [[String]]
+e3s7_generateJumpMoves board player pieces used_pieces
+  | null pieces = []
+  | otherwise   = e3s7_jumpMovesForPiece board (pieces ++ used_pieces) ++ e3s7_generateJumpMoves board player (tail pieces) (head pieces:used_pieces)
+
+
+e3s7_jumpMovesForPiece :: [String] -> [Piece] -> [[String]]
+e3s7_jumpMovesForPiece board pieces = e3s7_trimEmptyLists (getLeftJumps:[getRightJumps])
+  where getLeftJumps 
+          | e3s7_isValidJump board piece leftJump = e3s7_drawBoard board (leftJumpLanding:rest_pieces leftJump)
+          | otherwise                             = [];
+        getRightJumps
+          | e3s7_isValidJump board piece rightJump = e3s7_drawBoard board (rightJumpLanding:rest_pieces rightJump)
+          | otherwise                             = [];
+        piece = head pieces;
+        leftJump = e3s7_getPieceAheadLeft board piece;
+        leftJumpLanding = (fst piece, e3s7_moveLeftForward board (snd leftJump))
+        rightJump = e3s7_getPieceAheadRight board piece;
+        rightJumpLanding = (fst piece, e3s7_moveRightForward board (snd rightJump))
+        rest_pieces jumped = tail pieces ++ removeJumpedPiece (e3s7_findPlayersPieces board (e3s7_otherPlayer (fst piece))) jumped
+        removeJumpedPiece ps jumped
+          | null ps           = []
+          | head ps == jumped = removeJumpedPiece (tail ps) jumped
+          | otherwise         = head ps:removeJumpedPiece (tail ps) jumped
 
 e3s7_drawBoard ::  [String] -> [Piece] -> [String]
 {-
