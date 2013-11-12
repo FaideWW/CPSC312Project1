@@ -50,8 +50,9 @@ e3s7_getBestNextMove :: [String] -> Player -> Int -> ([String], Int)
 e3s7_getBestNextMove board player depth 
     | depth == 0 = (head (e3s7_generateNewMoves board player), 0) -- stops tricky TAs from breaking the program
     | depth == 1 = (bestMove [(i, e3s7_evaluateBoard i player) | i <- (e3s7_generateNewMoves board player)])
-    | otherwise  = bestMove [(i, snd (e3s7_getBestNextMove i player (depth - 1))) | i <- (e3s7_generateNewMoves (fst (e3s7_getOpponentBestNextMove board (e3s7_otherPlayer player))) player)] 
+    | otherwise  = e3s7_getBestNextMove someboard player (depth -1) 
     where bestMove boards = (head (reverse (sortBy e3s7_compareBoards boards)))
+          someboard = (fst (e3s7_getOpponentBestNextMove (fst (bestMove [(i, e3s7_evaluateBoard i player) | i <- (e3s7_generateNewMoves board player)])) player))
     -- | otherwise  = last (sortBy e3s7_compareBoards possibleMoves)
     --    where possibleMoves = [e3s7_getBestNextMove i player (depth - 1) | i <- e3s7_generateNewMoves (e3s7_getOpponentBestNextMove board player) player]
 
