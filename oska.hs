@@ -48,6 +48,7 @@ e3s7_getBestNextMove :: [String] -> Player -> Int -> [([String], Int)]
           than the immediate next step
 -}
 e3s7_getBestNextMove board player depth
+    | null (e3s7_generateNewMoves board player) = [(board, 0)]
     | depth == 0 = [(head (e3s7_generateNewMoves board player), 0)] -- stops tricky TAs from breaking the program
     | depth == 1 = [(bestMove [(i, e3s7_evaluateBoard i player) | i <- (e3s7_generateNewMoves board player)])]
     | otherwise  = someboard ++ e3s7_getBestNextMove (fst (head someboard)) player (depth -1)
