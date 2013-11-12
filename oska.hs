@@ -17,8 +17,8 @@ e3s7_oska :: [String] -> Char -> Int -> [String]
    on a given turn and a given number of future moves to consider
 -}
 e3s7_oska board player_char depth
-  | player == W = fst (e3s7_getBestNextMove board player depth)
-  | otherwise   = reverse (fst (e3s7_getBestNextMove (reverse board) player depth)) 
+  | player == W = fst (head (e3s7_getBestNextMove board player depth))
+  | otherwise   = reverse (fst (head (e3s7_getBestNextMove (reverse board) player depth))) 
   where player  = (e3s7_charToPlayer player_char)
 
 e3s7_charToPlayer :: Char -> Player
@@ -39,7 +39,7 @@ e3s7_otherPlayer p
     | p == B    = W
     | otherwise = E
 
-e3s7_getBestNextMove :: [String] -> Player -> Int -> ([String], Int)
+e3s7_getBestNextMove :: [String] -> Player -> Int -> [([String], Int)]
 {-
     finds the most optimal move for a given number of steps to search ahead
     using the minimax strategy
@@ -47,12 +47,12 @@ e3s7_getBestNextMove :: [String] -> Player -> Int -> ([String], Int)
     TODO: rewrite this so it considers the scores of moves further ahead 
           than the immediate next step
 -}
-e3s7_getBestNextMove board player depth 
-    | depth == 0 = (head (e3s7_generateNewMoves board player), 0) -- stops tricky TAs from breaking the program
-    | depth == 1 = (bestMove [(i, e3s7_evaluateBoard i player) | i <- (e3s7_generateNewMoves board player)])
-    | otherwise  = e3s7_getBestNextMove someboard player (depth -1) 
-    where bestMove boards = (head (reverse (sortBy e3s7_compareBoards boards)))
-          someboard = (fst (e3s7_getOpponentBestNextMove (fst (bestMove [(i, e3s7_evaluateBoard i player) | i <- (e3s7_generateNewMoves board player)])) player))
+e3s7_getBestNextMove board player depth
+    | depth == 0 = [(head (e3s7_generateNewMoves board player), 0)] -- stops tricky TAs from breaking the program
+    | depth == 1 = [(bestMove [(i, e3s7_evaluateBoard i player) | i <- (e3s7_generateNewMoves board player)])]
+    | otherwise  = someboard:e3s7_getBestNextMove (fst someboard) player (depth -1)
+    where bestMove boards = (head (reverse (sortBy e3s7_compareBoards boards))) 
+          someboard = (e3s7_getOpponentBestNextMove (fst (bestMove [(i, e3s7_evaluateBoard i player) | i <- (e3s7_generateNewMoves board player)])) player)
     -- | otherwise  = last (sortBy e3s7_compareBoards possibleMoves)
     --    where possibleMoves = [e3s7_getBestNextMove i player (depth - 1) | i <- e3s7_generateNewMoves (e3s7_getOpponentBestNextMove board player) player]
 
@@ -62,7 +62,7 @@ e3s7_getOpponentBestNextMove :: [String] ->  Player -> ([String], Int)
 
     we assume the opponent chooses the best NEXT move, looking one step ahead
 -}
-e3s7_getOpponentBestNextMove board player = (reverse (fst move), snd move)
+e3s7_getOpponentBestNextMove board player = (reverse (fst (head move)), snd (head move))
   where move = (e3s7_getBestNextMove (reverse board) (e3s7_otherPlayer player) 1)
 
 e3s7_compareBoards :: ([String], Int) -> ([String], Int) -> Ordering
